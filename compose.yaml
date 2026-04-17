@@ -1,0 +1,82 @@
+services:
+  pc-games-collection-prod:
+    # -- Image buildée localement (contient p7zip + pip deps) --
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pc-games-collection-prod
+
+    # -- 1. IDENTITÉ ------------------------------------------
+    # PUID/PGID du user TrueNAS (3100:5000)
+    # Le container démarre en root (nécessaire pour rien ici),
+    # mais les fichiers sur le volume appartiennent à 3100:5000.
+    # Si vous voulez forcer l'user runtime, décommentez :
+    user: "3100:5000"
+
+    # -- 2. DÉMARRAGE : uniquement uvicorn, plus d'installation --
+    command: >
+      python -m uvicorn main:app
+        --host 0.0.0.0
+        --port 5000
+        --reload
+        --reload-dir /app/app
+        --reload-dir /app/templates
+        --reload-dir /app/static
+        --reload-exclude '*.db'
+        --reload-exclude '*.backup*'
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PUID=3100
+      - PGID=5000
+      - TZ=Europe/Brussels
+
+    working_dir: /app
+
+    # -- 3. VOLUMES (chemins TrueNAS) -------------------------
+    volumes:
+      - /mnt/my_pool/containers/html-apps/pc-games-collection-prod:/app
+      - /mnt/my_pool/containers/html-apps/pc-games-collection-prod/data:/data
+      - /mnt/my_pool/OMV_Mount/MediaCenter/Games:/bibliotheque
+      - /usr/share/zoneinfo:/usr/share/zoneinfo:ro
+      - /etc/localtime:/etc/localtime:ro
+
+    # -- DNS (MACVLAN → Gemini API) ---------------------------
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+
+    # -- Réseau MACVLAN ---------------------------------------
+    networks:
+      net_apps:
+        ipv4_address: 10.10.30.75
+
+    restart: unless-stopped
+
+    # -- Traefik labels ---------------------------------------
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=net_apps"
+      # Service unique
+      - "traefik.http.services.pc-games-collection-prod.loadbalancer.server.port=5000"
+      
+      # Route 1 : Application (avec Authelia)
+      - "traefik.http.routers.pc-games-collection-prod.rule=Host(`pc-games-collection-prod.sigoli.be`)"
+      - "traefik.http.routers.pc-games-collection-prod.entrypoints=websecure"
+      - "traefik.http.routers.pc-games-collection-prod.tls=true"
+      - "traefik.http.routers.pc-games-collection-prod.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.pc-games-collection-prod.middlewares=authelia@docker"
+      - "traefik.http.routers.pc-games-collection-prod.service=pc-games-collection-prod"
+      - "traefik.http.routers.pc-games-collection-prod.priority=10"
+
+      # Route 2 : Agent (sans Authelia, pour /status)
+      - "traefik.http.routers.pc-games-collection-prod-agent.rule=Host(`pc-games-collection-prod.sigoli.be`) && PathPrefix(`/status`)"
+      - "traefik.http.routers.pc-games-collection-prod-agent.entrypoints=websecure"
+      - "traefik.http.routers.pc-games-collection-prod-agent.tls=true"
+      - "traefik.http.routers.pc-games-collection-prod-agent.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.pc-games-collection-prod-agent.service=pc-games-collection-prod"
+      - "traefik.http.routers.pc-games-collection-prod-agent.priority=20"
+
+networks:
+  net_apps:
+    external: true

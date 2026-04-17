@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}PC Games Collection{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="/static/css/gallery.css?v={{ APP_VERSION }}">
+    <script>
+        window.GAMES_DATA = {
+            {% for game in games %}
+            "{{ game.folder_name.lower() | replace('\\', '\\\\') }}": {
+                "title": {{ game.title | tojson }},
+                "ctime": {{ game.ctime | tojson }},
+                "release_date": {{ game.release_date | tojson }},
+                "user_rating": {{ game.user_rating | tojson }},
+                "family": {{ game.family | tojson }},
+                "tags": {{ game.tags | tojson }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        };
+        window.ALL_TAGS = {{ all_tags | tojson | safe }};
+    </script>
+{% endblock %}
+
+{% block content %}
+    <header class="nav-header">
+        <div class="header-left-group" style="display: flex; align-items: center; gap: 20px;">
+            <button class="nav-brand" id="brand-btn" title="{{ _('scan_library_title') }}">
+                <div class="d20-wrapper">
+                    <svg id="d20-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                        <path d="M6 12h4"></path>
+                        <path d="M8 10v4"></path>
+                        <circle cx="15" cy="10" r="1"></circle>
+                        <circle cx="15" cy="14" r="1"></circle>
+                        <circle cx="18" cy="12" r="1"></circle>
+                    </svg>
+                    <span id="d20-roll-result"></span>
+                </div>
+                <span>PC Games Collection — <em>{{ _('nav_ready_to_play') }}</em></span>
+            </button>
+
+            <!-- Sélecteur de langue (v2.4.9 groupé à gauche) -->
+            <div class="lang-selector-header">
+                <button onclick="setLanguage('fr')" class="{% if get_current_lang() == 'fr' %}active{% endif %}" title="Français">FR</button>
+                <button onclick="setLanguage('en')" class="{% if get_current_lang() == 'en' %}active{% endif %}" title="English">EN</button>
+            </div>
+        </div>
+
+        <div id="visual-search-container" class="visual-search-container visual-search-hidden"></div>
+
+        <div class="nav-actions">
+            <button class="nav-icon-btn" id="btn-toggle-sidebar" onclick="toggleSidebar()" title="{{ _('advanced_filters_title') }}">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M12.2917 7.58317C12.913 7.58317 13.4167 7.07949 13.4167 6.45817C13.4167 5.83685 12.913 5.33317 12.2917 5.33317C11.6704 5.33317 11.1667 5.83685 11.1667 6.45817C11.1667 7.07949 11.6704 7.58317 12.2917 7.58317ZM15.2533 7.45817C14.8363 8.69363 13.6679 9.58317 12.2917 9.58317C10.9155 9.58317 9.74712 8.69363 9.33011 7.45817H2.08335V5.45817H9.33011C9.74712 4.22271 10.9155 3.33317 12.2917 3.33317C13.6679 3.33317 14.8363 4.22271 15.2533 5.45817H17.9167V7.45817H15.2533ZM7.70835 12.4165C7.08703 12.4165 6.58335 12.9202 6.58335 13.5415C6.58335 14.1628 7.08703 14.6665 7.70835 14.6665C8.32967 14.6665 8.83335 14.1628 8.83335 13.5415C8.83335 12.9202 8.32967 12.4165 7.70835 12.4165ZM4.74678 14.5415H2.08335V12.5415H4.74678C5.16379 11.306 6.33219 10.4165 7.70835 10.4165C9.08452 10.4165 10.2529 11.306 10.6699 12.5415H17.9167V14.5415H10.6699C10.2529 15.777 9.08452 16.6665 7.70835 16.6665C6.33219 16.6665 5.16379 15.777 4.74678 14.5415Z" fill="currentColor"></path>
+                </svg>
+            </button>
+            <div class="nav-divider"></div>
+
+            <div class="nav-profile">
+                <div class="nav-profile-info">
+                    <span class="nav-username">{{ user.username }}</span>
+                    {% if user.role == 'admin' %}
+                        <a href="/admin" class="nav-role admin-text-link">({{ _('admin_label') | lower }})</a>
+                    {% else %}
+                        <span class="nav-role">({{ _('user_label') | lower }})</span>
+                    {% endif %}
+                </div>
+                <a href="/logout" class="logout-icon-btn" title="{{ _('logout_label') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="gallery-layout sidebar-hidden" id="layout-grid">
+
+        <main class="gallery-content">
+            <!-- Family Header (Hidden by default, shown by JS when filtering) -->
+            <div id="family-header" class="family-header" style="display: none;">
+                <div class="family-cover-wrapper">
+                    <img id="family-cover" src="" class="family-cover" alt="Collection Cover">
+                </div>
+                <div class="family-info">
+                    <h1 id="family-title"></h1>
+                    <p id="family-description"></p>
+                    <div style="margin-top: 15px;">
+                        <button class="btn-capsule" onclick="backToGallery()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                            <span>{{ _('back_to_gallery_btn') or 'Retour à la galerie' }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="gallery-grid" id="gallery-container">
+                {% for game in games %}
+                <a href="{{ game.link_url }}" class="game-card" data-folder="{{ game.folder_name }}" data-family="{{ game.family or '' }}">
+                    <div class="card-img-wrapper">
+                        {% if game.cover_url %}
+                            <picture class="lozad" style="display: block; width: 100%; height: 100%;">
+                                {% if game.cover_url is mapping and game.cover_url.avif %}
+                                    <source data-srcset="{{ game.cover_url.avif }}" type="image/avif">
+                                {% endif %}
+                                {% if game.cover_url is mapping and game.cover_url.webp %}
+                                    <source data-srcset="{{ game.cover_url.webp }}" type="image/webp">
+                                {% endif %}
+                                <img data-src="{{ game.cover_url if game.cover_url is string else game.cover_url.webp }}" class="card-img" decoding="async" alt="{{ game.title }}">
+                            </picture>
+                        {% else %}
+                            <div class="card-img-placeholder">
+                                <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                                    <path d="M6 12h4"></path>
+                                    <path d="M8 10v4"></path>
+                                    <circle cx="15" cy="10" r="1"></circle>
+                                    <circle cx="15" cy="14" r="1"></circle>
+                                    <circle cx="18" cy="12" r="1"></circle>
+                                </svg>
+                            </div>
+                        {% endif %}
+
+                        {% if game.user_rating %}
+                        <div class="game-rating-overlay" title="{{ game.user_rating }}/5">
+                            {% for i in range(1, game.user_rating + 1) %}
+                                <span class="star-filled">★</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <div class="card-title">
+                            {% if game.family %}
+                                <span class="collection-link" onclick="event.preventDefault(); event.stopPropagation(); filterByFamily('{{ game.family }}')">{{ game.family }}</span>
+                                <span class="collection-separator">-</span>
+                            {% endif %}
+                            {{ game.display_title }}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+
+                <div class="gallery-empty" id="gallery-empty">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.10;">
+                        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                        <path d="M6 12h4"></path>
+                        <path d="M8 10v4"></path>
+                        <circle cx="15" cy="10" r="1"></circle>
+                        <circle cx="15" cy="14" r="1"></circle>
+                        <circle cx="18" cy="12" r="1"></circle>
+                    </svg>
+                    <p>{{ _('no_games_found') }}</p>
+                </div>
+            </div>
+        </main>
+
+        <div class="resizer" id="drag-handle"></div>
+
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M12.2917 7.58317C12.913 7.58317 13.4167 7.07949 13.4167 6.45817C13.4167 5.83685 12.913 5.33317 12.2917 5.33317C11.6704 5.33317 11.1667 5.83685 11.1667 6.45817C11.1667 7.07949 11.6704 7.58317 12.2917 7.58317ZM15.2533 7.45817C14.8363 8.69363 13.6679 9.58317 12.2917 9.58317C10.9155 9.58317 9.74712 8.69363 9.33011 7.45817H2.08335V5.45817H9.33011C9.74712 4.22271 10.9155 3.33317 12.2917 3.33317C13.6679 3.33317 14.8363 4.22271 15.2533 5.45817H17.9167V7.45817H15.2533ZM7.70835 12.4165C7.08703 12.4165 6.58335 12.9202 6.58335 13.5415C6.58335 14.1628 7.08703 14.6665 7.70835 14.6665C8.32967 14.6665 8.83335 14.1628 8.83335 13.5415C8.83335 12.9202 8.32967 12.4165 7.70835 12.4165ZM4.74678 14.5415H2.08335V12.5415H4.74678C5.16379 11.306 6.33219 10.4165 7.70835 10.4165C9.08452 10.4165 10.2529 11.306 10.6699 12.5415H17.9167V14.5415H10.6699C10.2529 15.777 9.08452 16.6665 7.70835 16.6665C6.33219 16.6665 5.16379 15.777 4.74678 14.5415Z" fill="currentColor"></path>
+                </svg>
+                {{ _('advanced_filters_title') }}
+            </div>
+            <div class="sidebar-content" id="sidebar-filters">
+                <!-- Recherche Texte -->
+                <div class="filter-section">
+                    <span class="modal-section-label">{{ _('search_label') }}</span>
+                    <input type="text" id="game-search" class="search-input" placeholder="{{ _('search_placeholder') }}" oninput="applyFilters()" autocomplete="off" style="width: 100%; margin-top: 8px;">
+                </div>
+
+                <!-- Tri -->
+                <div class="filter-section">
+                    <span class="modal-section-label">{{ _('sorting_label') }}</span>
+                    <select id="filter-sort" class="filter-select" onchange="applyFilters()" style="margin-top: 8px;">
+                        <option value="name_asc">{{ _('sort_name_asc') }}</option>
+                        <option value="name_desc">{{ _('sort_name_desc') }}</option>
+                        <option value="date_added_desc">{{ _('sort_date_added_desc') }}</option>
+                        <option value="date_added_asc">{{ _('sort_date_added_asc') }}</option>
+                        <option value="release_desc">{{ _('sort_release_desc') }}</option>
+                        <option value="release_asc">{{ _('sort_release_asc') }}</option>
+                        <option value="rating_desc">{{ _('sort_rating_desc') }}</option>
+                        <option value="rating_asc">{{ _('sort_rating_asc') }}</option>
+                    </select>
+                </div>
+
+                <!-- Note Minimale -->
+                <div class="filter-section">
+                    <span class="modal-section-label">{{ _('filter_rating_label') }}</span>
+                    <select id="filter-rating" class="filter-select" onchange="applyFilters()" style="margin-top: 8px;">
+                        <option value="0">{{ _('any_rating') }}</option>
+                        <option value="5">★★★★★</option>
+                        <option value="4">★★★★☆ & +</option>
+                        <option value="3">★★★☆☆ & +</option>
+                        <option value="2">★★☆☆☆ & +</option>
+                        <option value="1">★☆☆☆☆ & +</option>
+                    </select>
+                </div>
+
+                <!-- Tags par Famille -->
+                <div id="filter-tags-container" class="filter-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="modal-section-label" style="margin-bottom: 0;">{{ _('tags_label') }}</span>
+                        <!-- Sélecteur ET/OU style capsule (identique au header) -->
+                        <div class="lang-selector-header" id="filter-mode-selector">
+                            <button onclick="setFilterMode('OR')" class="active" id="btn-filter-or">{{ _('filter_mode_or') }}</button>
+                            <button onclick="setFilterMode('AND')" id="btn-filter-and">{{ _('filter_mode_and') }}</button>
+                        </div>
+                    </div>
+                    <div id="filter-tags-list" style="display:flex; flex-direction:column; gap:12px; margin-top: 12px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                        <!-- Les familles de tags seront injectées ici -->
+                    </div>
+                </div>
+
+                <div class="filter-actions" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button class="btn btn-secondary" onclick="resetFilters()" style="width: 100%;">{{ _('reset_btn') }}</button>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- Modale de Gestion (Admin) -->
+    {% if user.role == 'admin' %}
+    <dialog id="mgmt-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="mgmt-modal-title">{{ _('game_management_title') }}</h3>
+                <button class="icon-action" onclick="document.getElementById('mgmt-modal').close()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mgmt-actions-grid">
+                    <button class="btn-capsule" id="btn-edit-meta">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <span>{{ _('edit_metadata_btn') }}</span>
+                    </button>
+                    <button class="btn-capsule" id="btn-rename-game">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        <span>{{ _('rename_folder_btn') }}</span>
+                    </button>
+                    <button class="btn-capsule" id="btn-clear-cache">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 5H4V19H20V5Z"/><path d="M8 5V19"/><path d="M12 5V19"/><path d="M16 5V19"/><path d="M4 9H20"/><path d="M4 14H20"/></svg>
+                        <span>{{ _('regenerate_ia_btn') }}</span>
+                    </button>
+                    <button class="btn-capsule" id="btn-restore-backup" style="display: none;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                        <span>{{ _('restore_backup_btn') }}</span>
+                    </button>
+                    <div class="mgmt-divider"></div>
+                    <button class="btn-capsule is-danger" id="btn-delete-game">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <span>{{ _('permanent_delete_btn') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Modale de Confirmation de Suppression -->
+    <dialog id="confirm-delete-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">{{ _('confirm_delete_title') }}</h3>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9rem; margin-bottom: 20px;">{{ _('confirm_delete_text', name='<span id="delete-game-name"></span>')|safe }}</p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn-capsule is-danger" id="btn-confirm-delete-1" style="width: 100%;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>{{ _('yes_im_sure_btn') }}</span>
+                    </button>
+                    <button class="btn-capsule" onclick="document.getElementById('confirm-delete-modal').close()" style="width: 100%;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <span>{{ _('cancel_label') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Seconde Confirmation -->
+    <dialog id="confirm-delete-modal-2">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">{{ _('irreversible_action_title') }}</h3>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9rem; margin-bottom: 20px; color: var(--danger);">{{ _('last_warning_delete_text') }}</p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn-capsule is-danger" id="btn-confirm-delete-final" style="width: 100%; font-weight: 900;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <span>{{ _('delete_permanently_final_btn') }}</span>
+                    </button>
+                    <button class="btn-capsule" onclick="document.getElementById('confirm-delete-modal-2').close()" style="width: 100%;">
+                        <span>{{ _('finally_no_btn') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+    {% endif %}
+
+    <script src="/static/js/gallery.js?v={{ APP_VERSION }}" defer></script>
+{% endblock %}

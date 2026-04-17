@@ -1,0 +1,653 @@
+{% extends "base.html" %}
+
+{% block title %}{{ game.title }} — PC Games Collection{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="/static/css/game_view.css">
+    
+    <script>
+        window.GAME_CONFIG = {
+            base_path: {{ game.base_path | tojson | safe }},
+            title: {{ game.title | tojson | safe }},
+            description: {{ game.description | tojson | safe }},
+            agent_token: "{{ agent_token }}",
+            host_games_path: "{{ host_games_path | replace('\\', '\\\\') }}",
+            archive_format: "{{ archive_format }}",
+            user_role: "{{ user.role }}",
+            is_new: {{ game.is_new | tojson }},
+            open_modal_auto: {{ open_modal_auto | tojson }},
+            force_edit: {{ force_edit | tojson }},
+            has_sidecar: {{ has_sidecar | tojson }},
+            zip_status: {{ game.zip_status | tojson }},
+            zip_progress: {{ game.zip_progress | tojson | default(0) }},
+            zip_path: {{ game.zip_path | tojson | safe }},
+            metadata_source: {{ metadata_source | tojson }},
+            meta: {{ game.meta | tojson | safe }},
+            editions_cache: {{ game.editions_cache | tojson | safe }},
+            external_links: {{ game.external_links | tojson | safe }},
+            ai_prompt_desc: {{ ai_prompt_desc | default('') | tojson | safe }},
+            ai_prompt_editions: {{ ai_prompt_editions | default('') | tojson | safe }},
+            ai_prompt_links: {{ ai_prompt_links | default('') | tojson | safe }},
+            ai_prompt_pdf_meta: {{ ai_prompt_pdf_meta | default('') | tojson | safe }}
+        };
+    </script>
+    <script src="/static/js/game_view.js?v={{ APP_VERSION }}" defer></script>
+    <script src="/static/js/game_wizard.js?v={{ APP_VERSION }}" defer></script>
+    <script src="/static/js/game_edit_wizard_new.js?v={{ APP_VERSION }}" defer></script>
+    <script src="/static/js/game_edit_direct.js?v={{ APP_VERSION }}" defer></script>
+{% endblock %}
+
+{% block content %}
+    {% macro render_tree(node, level=0) %}
+        {% if node._is_dir %}
+            {% if node.name != 'root' %}
+                <div class="tree-folder" style="margin-left: {{ level * 20 }}px" onclick="toggleTreeFolder(this)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span class="tree-file-name">{{ node.name }}</span>
+                </div>
+            {% endif %}
+            <div class="tree-children" style="{% if node.name != 'root' %}display: none;{% endif %}">
+                {% if node.children %}
+                    {% for child in node.children.values() %}
+                        {{ render_tree(child, level + (1 if node.name != 'root' else 0)) }}
+                    {% endfor %}
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="tree-file" style="margin-left: {{ level * 20 }}px">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                    <polyline points="13 2 13 9 20 9"></polyline>
+                </svg>
+                <div class="tree-file-info">
+                    <span class="tree-file-name">{{ node.filename }}</span>
+                    <span class="tree-file-size">{{ node.size_str }}</span>
+                </div>
+                {% if node.filename.lower().endswith('.nfo') and node.nfo_content %}
+                    <button class="file-download" style="margin-left: auto;" onclick="viewNfoContent(`{{ node.filename | replace('\'', '\\\'') }}`, `{{ node.nfo_content | replace('`', '\\`') }}`)" title="Voir le NFO">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endmacro %}
+
+    <div class="immersive-bg" style="{% if game.cover_url and game.cover_url != 'None' %}background-image: url('{{ game.cover_url }}');{% else %}display: none;{% endif %}"></div>
+
+    <header class="nav-header">
+        <div class="header-left-group" style="display: flex; align-items: center; gap: 20px;">
+            <nav class="breadcrumb">
+                <a href="/" class="breadcrumb-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    </svg>
+                    <span>{{ _('breadcrumb_library') }}</span>
+                </a>
+                {% for crumb in game.breadcrumbs %}
+                    <span class="breadcrumb-sep">/</span>
+                    {% if not loop.last %}
+                        <a href="{{ crumb.url }}" class="breadcrumb-item">{{ crumb.name }}</a>
+                    {% else %}
+                        <span class="breadcrumb-current">{{ crumb.name }}</span>
+                    {% endif %}
+                {% endfor %}
+            </nav>
+        </div>
+
+        <div class="nav-actions">
+            <div class="nav-profile">
+                <div class="nav-profile-info">
+                    <span class="nav-username">{{ user.username }}</span>
+                    {% if user.role == 'admin' %}
+                        <a href="/admin" class="nav-role admin-text-link">({{ _('admin_label') | lower }})</a>
+                    {% else %}
+                        <span class="nav-role">({{ _('user_label') | lower }})</span>
+                    {% endif %}
+                </div>
+                <div class="nav-divider"></div>
+                <a href="/logout" class="logout-icon-btn" title="{{ _('logout_label') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <div class="sidebar">
+            <aside class="info-card">
+                <div class="info-card-header">
+                    <h1 class="game-title" title="{{ game.title }}">{{ game.title }}</h1>
+                    
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="rating-container" style="margin:0;">
+                            <div class="star-rating-interactive">
+                                {% for i in range(5, 0, -1) %}
+                                <input type="radio" id="star-{{ i }}" name="user-rating" value="{{ i }}" {% if game.user_rating == i %}checked{% endif %} onclick="saveUserRating({{ i }})">
+                                <label for="star-{{ i }}" title="{{ i }} étoiles">
+                                    <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        {% if user.role == 'admin' %}
+                            <button class="icon-action icon-action--primary" onclick="openEditModal()" title="Modifier les informations du jeu">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="cover-wrapper">
+                    <div id="media-cover" class="media-content active">
+                        {% if game.cover_url and game.cover_url != 'None' %}
+                            <picture style="display: block; width: 100%; height: 100%;">
+                                {% if game.cover_url is mapping and game.cover_url.avif %}
+                                    <source srcset="{{ game.cover_url.avif }}" type="image/avif">
+                                {% endif %}
+                                {% if game.cover_url is mapping and game.cover_url.webp %}
+                                    <source srcset="{{ game.cover_url.webp }}" type="image/webp">
+                                {% endif %}
+                                <img src="{{ game.cover_url if game.cover_url is string else game.cover_url.webp }}" decoding="async" fetchpriority="high" alt="{{ game.title }}">
+                            </picture>
+                        {% else %}
+                            <div class="cover-placeholder">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div id="media-video" class="media-content">
+                        <div id="youtube-player-container" class="youtube-container">
+                            <iframe id="youtube-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                        <div id="youtube-selector" class="media-selector">
+                            <!-- Boutons injectés via JS -->
+                        </div>
+                    </div>
+
+                    {% if game.meta.youtube_urls %}
+                    <button class="media-toggle" onclick="toggleMedia()" title="Passer de la couverture à la vidéo">
+                        <svg id="toggle-icon-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+                        <svg id="toggle-icon-cover" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    </button>
+                    {% endif %}
+                </div>
+
+                <div class="info-tabs">
+                    <button class="info-tab-btn active" onclick="switchInfoTab('synopsis', this)">Synopsis</button>
+                    <button class="info-tab-btn" onclick="switchInfoTab('metadata', this)">{{ _('metadata_tab') }}</button>
+                </div>
+
+                <div id="tab-synopsis" class="info-tab-content active">
+                    <div id="description-content" class="synopsis-body"></div>
+                </div>
+
+                <div id="tab-metadata" class="info-tab-content">
+                    {% set has_meta = game.meta.title_fr or game.meta.title_en or game.meta.platform or game.meta.universe or game.meta.publisher or game.meta.genre or game.meta.release_date or game.meta.developer or game.meta.studio or game.meta.keywords or game.meta.rating %}
+                    <div id="meta-display-container" class="game-meta-display {% if not has_meta %}is-empty{% endif %}">
+                        {% if game.meta.title_fr or game.meta.title_en %}
+                            <div class="meta-item" id="meta-row-titles">
+                                <span class="t-label">{{ _('titles_label') }} :</span>
+                                <span class="t-value" id="display-titles">{{ game.meta.title_fr }}{% if game.meta.title_fr and game.meta.title_en %} / {% endif %}{{ game.meta.title_en }}</span>
+                            </div>
+                        {% else %}
+                            <div class="meta-item" id="meta-row-titles" style="display:none;">
+                                <span class="t-label">{{ _('titles_label') }} :</span>
+                                <span class="t-value" id="display-titles"></span>
+                            </div>
+                        {% endif %}
+
+                        {% if game.meta.platform or game.meta.universe %}
+                            <div class="meta-item" id="meta-row-platform">
+                                <span class="t-label">{{ _('platform_universe_label') }} :</span>
+                                <span class="t-value" id="display-platform-universe">{{ game.meta.platform }}{% if game.meta.platform and game.meta.universe %} — {% endif %}{{ game.meta.universe }}</span>
+                            </div>
+                        {% else %}
+                            <div class="meta-item" id="meta-row-platform" style="display:none;">
+                                <span class="t-label">{{ _('platform_universe_label') }} :</span>
+                                <span class="t-value" id="display-platform-universe"></span>
+                            </div>
+                        {% endif %}
+
+                        {% if game.meta.publisher %}
+                            <div class="meta-item" id="meta-row-publisher">
+                                <span class="t-label">{{ _('publisher_label') }} :</span>
+                                <span class="t-value" id="display-publisher">{{ game.meta.publisher }}</span>
+                            </div>
+                        {% else %}
+                            <div class="meta-item" id="meta-row-publisher" style="display:none;">
+                                <span class="t-label">{{ _('publisher_label') }} :</span>
+                                <span class="t-value" id="display-publisher"></span>
+                            </div>
+                        {% endif %}
+
+                        {% if game.meta.genre or game.meta.release_date %}
+                            <div class="meta-item" id="meta-row-genre">
+                                <span class="t-label">{{ _('genre_date_label') }} :</span>
+                                <span class="t-value" id="display-genre-date">{{ game.meta.genre }}{% if game.meta.genre and game.meta.release_date %} ({{ game.meta.release_date }}){% endif %}</span>
+                            </div>
+                        {% else %}
+                            <div class="meta-item" id="meta-row-genre" style="display:none;">
+                                <span class="t-label">{{ _('genre_date_label') }} :</span>
+                                <span class="t-value" id="display-genre-date"></span>
+                            </div>
+                        {% endif %}
+
+                        {% if game.meta.developer %}
+                            <div class="meta-item" id="meta-row-developer">
+                                <span class="t-label">{{ _('developer_label') }} :</span>
+                                <span class="t-value" id="display-developer">{{ game.meta.developer }}</span>
+                            </div>
+                        {% else %}
+                            <div class="meta-item" id="meta-row-developer" style="display:none;">
+                                <span class="t-label">{{ _('developer_label') }} :</span>
+                                <span class="t-value" id="display-developer"></span>
+                            </div>
+                        {% endif %}
+
+                        {% if game.meta.studio %}
+                            <div class="meta-item" id="meta-row-studio">
+                                <span class="t-label">{{ _('studio_label') }} :</span>
+                                <span class="t-value" id="display-studio">{{ game.meta.studio }}</span>
+                            </div>
+                        {% else %}
+                            <div class="meta-item" id="meta-row-studio" style="display:none;">
+                                <span class="t-label">{{ _('studio_label') }} :</span>
+                                <span class="t-value" id="display-studio"></span>
+                            </div>
+                        {% endif %}
+
+                        {% if game.meta.rating %}
+                            <div class="meta-item" id="meta-row-rating">
+                                <span class="t-label">{{ _('rating_label') }} :</span>
+                                <span class="t-value" id="display-rating">{{ game.meta.rating }} / 100</span>
+                            </div>
+                        {% else %}
+                            <div class="meta-item" id="meta-row-rating" style="display:none;">
+                                <span class="t-label">{{ _('rating_label') }} :</span>
+                                <span class="t-value" id="display-rating"></span>
+                            </div>
+                        {% endif %}
+
+                        {% if game.meta.keywords %}
+                            <div class="meta-item" id="meta-row-keywords">
+                                <span class="t-label">{{ _('keywords_label') }} :</span>
+                                <span class="t-value t-meta" id="display-keywords">{{ game.meta.keywords }}</span>
+                            </div>
+                        {% else %}
+                            <div class="meta-item" id="meta-row-keywords" style="display:none;">
+                                <span class="t-label">{{ _('keywords_label') }} :</span>
+                                <span class="t-value t-meta" id="display-keywords"></span>
+                            </div>
+                        {% endif %}
+
+                        <!-- Liens Internet (Badges Horizontaux) -->
+                        <div id="meta-row-links" class="meta-item" style="{% if not game.external_links %}display:none;{% endif %}">
+                            <span class="t-label">{{ _('resources_label') }} :</span>
+                            <div id="display-links-badges" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                {% for link in game.external_links %}
+                                    <a href="{{ link.url }}" target="_blank" class="sidebar-link-badge">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="4"></line></svg>
+                                        {{ link.name }}
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tags (BLOC: SIDEBAR_TAGS_V2.4.15) -->
+                    <div id="sidebar-tags-container" class="sidebar-tags-grid" style="padding: 15px 0 0 0; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); {% if not game.meta.tags %}display:none;{% endif %}">
+                        {% for tag in game.meta.tags %}
+                            <div class="sidebar-tag-badge" title="{{ tag.family }} : {{ tag.name }}">
+                                <span class="tag-dot" style="background-color: {{ tag.color }}"></span>
+                                <span>{{ tag.name }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </aside>
+
+            <section class="context-card" style="display:none;">
+                <div class="youtube-section" style="margin-bottom: 24px; {% if not game.meta.youtube_urls %}display:none;{% endif %}">
+                    <div class="synopsis-header">
+                        <span class="t-label">Vidéos / Trailers</span>
+                    </div>
+                    <div id="youtube-player-container-old" class="youtube-container" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; background: #000; margin-top: 10px;">
+                        <iframe id="youtube-iframe-old" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                    <div id="youtube-selector-old" style="display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 8px;">
+                        <!-- Buttons added via JS -->
+                    </div>
+                </div>
+
+                <div class="synopsis-header">
+                    <span class="t-label">Synopsis</span>
+                </div>
+                <div id="description-content-old" class="synopsis-body"></div>
+            </section>
+        </div>
+
+        <section class="files-card">
+            <div class="files-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h2 class="t-section">{{ _('content_section_title') }}</h2>
+                    <span class="files-count">{{ _('items_count', count=game.files|length) }}</span>
+                </div>
+                
+                {% if user.role == 'admin' and not game.is_archived and game.zip_status != 'ready' and not has_iso %}
+                <button id="main-archive-btn" class="btn-capsule" style="background: rgba(0, 207, 127, 0.15);" 
+                        onclick="startArchival()" 
+                        title="{{ _('convert_to_iso_title') }}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    {{ _('convert_to_iso') }}
+                </button>
+                {% endif %}
+            </div>
+
+            {% for item in game.files %}
+            {% set outer_loop = loop %}
+            <div class="file-item {% if item.is_pinned %}is-pinned{% endif %} {% if item.is_archived %}is-archived{% endif %} {% for a in archives_virtual_data if a.name == item.filename %}virtual-archive-block{% endfor %}">
+                <div class="file-item-row">
+                    <div class="pin-placeholder"></div> 
+
+                    <a {% if item.filename.lower().endswith('.iso') and not iso_download_enabled %}
+                        href="javascript:void(0)" onclick="initiateIsoMount('{{ item.absolute_path | replace('\\', '\\\\') }}')"
+                       {% else %}
+                        href="{{ item.url }}"
+                       {% endif %} 
+                       class="file-link">
+                        <span class="file-icon {% if item.is_folder %}file-icon-folder{% else %}file-icon-data{% endif %}">
+                            {% if item.is_folder %}
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                                </svg>
+                            {% else %}
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                </svg>
+                            {% endif %}
+                        </span>
+                        <div>
+                            <div class="file-name">
+                                {{ item.filename }}
+                                {% if item.is_archived %}
+                                <span class="archived-tag" title="Fichier archivé (uniquement dans l'archive {{ archive_format }})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                    Archivé
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="file-size">{% if item.is_folder %}Dossier{% else %}{{ item.size_str }}{% endif %}</div>
+                        </div>
+                    </a>
+                    
+                    <div class="file-actions">
+                        {% for archive in archives_virtual_data if archive.name == item.filename %}
+                        <button class="file-manage-btn" style="opacity: 1;" onclick='toggleArchiveAccordion(this, {{ archive.path | tojson | safe }}, {{ "true" if archive.has_index else "false" }})' title="Voir le contenu de l'archive">
+                            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        {% endfor %}
+
+                        {% if item.is_folder %}
+                            {% if user.role == 'admin' and has_iso %}
+                            <button class="btn-capsule" style="margin-right: 8px; background: rgba(0, 207, 127, 0.05);" 
+                                    onclick="initiateIsoCreation('{{ item.absolute_path | replace('\\', '\\\\') }}', this)"
+                                    title="Transformer ce dossier en fichier ISO via l'Agent Local">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                </svg>
+                                <span>Convertir en ISO</span>
+                            </button>
+                            {% endif %}
+                        {% else %}
+                            {% if item.is_archived %}
+                                <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-right: 12px;">
+                                    Inclus dans l'archive {{ archive_format }}
+                                </span>
+                            {% else %}
+                                {% if item.filename.lower().endswith('.nfo') %}
+                                <button class="file-download" style="margin-right: 8px;" 
+                                        onclick="viewNfo('{{ item.absolute_path | replace('\\', '\\\\') }}', '{{ item.filename | replace('\'', '\\\'') }}')" title="Voir le NFO">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                                {% endif %}
+
+                                {% if item.filename.lower().endswith('.iso') %}
+                                <button class="btn-capsule" style="margin-right: 8px;" 
+                                        onclick="initiateIsoMount('{{ item.absolute_path | replace('\\', '\\\\') }}')"
+                                        title="Monter l'image disque sur votre machine">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/>
+                                    </svg>
+                                    <span>Monter l'ISO</span>
+                                </button>
+                                {% endif %}
+
+                                {% if not item.filename.lower().endswith('.iso') or iso_download_enabled %}
+                                <a href="{{ item.url }}" download class="file-download" title="Télécharger">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                        
+                        {% if user.role == 'admin' %}
+                        <button class="file-manage-btn" title="Gérer ce fichier"
+                                data-path="{{ item.absolute_path }}"
+                                data-filename="{{ item.filename }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                <circle cx="12" cy="5" r="1.2" fill="currentColor" stroke="none"/>
+                                <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+                                <circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/>
+                            </svg>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% for archive in archives_virtual_data if archive.name == item.filename %}
+                <div id="archive-content-{{ outer_loop.index }}" class="archive-inline-content" style="display: none;"
+                     data-path='{{ archive.path | tojson | safe }}'
+                     data-has-index='{{ "true" if archive.has_index else "false" }}'>
+                    {% if archive.has_index %}
+                        <div class="virtual-files-list">
+                            {{ render_tree(archive.files) }}
+                        </div>
+                    {% else %}
+                        <p class="t-meta" style="font-style: italic; opacity: 0.4; padding: 15px 40px; font-size: 0.8rem;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" style="vertical-align: middle; margin-right: 5px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            Cette archive n'a pas encore été indexée. Le contenu interne est masqué.
+                        </p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <div class="virtual-archive-block active" style="margin-top: 24px;">
+                <div class="files-card-header" onclick="toggleArchiveAccordion(this)" style="border-top: 1px solid rgba(0, 207, 127, 0.1); padding-top: 20px; display: flex; align-items: center;">
+                    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="margin-right: 10px;">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                    <h2 class="t-section" style="margin-bottom: 0;">{{ _('my_rating_title') }}</h2>
+                    <span class="save-status" id="appreciation-save-status" style="margin-left: auto;">✓ {{ _('rating_saved') }}</span>
+                </div>
+                <div style="display: block; padding: 16px 0;">
+                    <textarea class="appreciation-textarea" id="user-comment" placeholder="{{ _('comment_placeholder') }}" onblur="saveUserComment()">{{ game.user_comment }}</textarea>
+                </div>
+            </div>
+
+            <section id="suggestions-panel">
+                <div class="suggestions-title">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                    {{ _('recommendations_title') }}
+                </div>
+                <div id="suggestions-content" class="suggestions-carousel">
+                    <div class="suggestions-loading">
+                        <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4"/></svg>
+                        {{ _('recommendations_loading') }}
+                    </div>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    {% include 'components/game_edit_wizard.html' %}
+    {% include 'components/game_edit_modal.html' %}
+
+    <dialog id="manage-modal">
+        <div class="modal modal--wide">
+            <div class="modal-header">
+                <h3 class="modal-title" id="manage-modal-title">{{ _('manage_file_title') }}</h3>
+                <button class="icon-action" onclick="closeManageModal()" title="{{ _('close_btn_title') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="manage-tab-group">
+                <div class="manage-tab-container">
+                    <button class="manage-tab-btn active" data-tab="meta" onclick="switchTab('meta', this)">{{ _('metadata_tab') }}</button>
+                    <button class="manage-tab-btn" data-tab="db" onclick="switchTab('db', this)">{{ _('database_tab') }}</button>
+                    <button class="manage-tab-btn" data-tab="files" onclick="switchTab('files', this)">{{ _('local_files_tab') }}</button>
+                </div>
+            </div>
+
+            <div class="manage-body" style="padding: 20px; overflow-y: auto;">
+                <div id="tab-meta" class="manage-tab-content active" style="gap: 12px;">
+                    <div class="section-title" style="margin-top:0;">{{ _('identification_section_title') }}</div>
+                    <div class="data-card data-card--col" style="gap: 8px;">
+                        <label for="rename-input" class="data-card-label" style="display:block; margin-bottom: 0;">{{ _('filename_on_disk_label') }}</label>
+                        <input type="text" id="rename-input" oninput="updateRenameBtn(this)">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                            <div id="rename-feedback" class="manage-feedback" style="margin:0;"></div>
+                            <button id="rename-btn" class="btn-capsule" onclick="renameFile(this)" disabled>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                <span>{{ _('rename_label') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-db" class="manage-tab-content" style="gap: 12px;">
+                    <div id="db-loading" class="manage-spinner"><svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4"/></svg>{{ _('loading_label') }}…</div>
+                    <div id="db-content" style="display:none; flex-direction:column; gap:12px;">
+                        <div class="section-title" style="margin-top:0;">{{ _('technical_info_section_title') }}</div>
+                        <div class="data-card"><div class="data-card-header"><span class="data-card-label">{{ _('path_label') }}</span></div><span class="data-card-value mono" id="db-path">—</span></div>
+                        <div class="data-card"><div class="data-card-header"><span class="data-card-label">{{ _('md5_label') }}</span></div><span class="data-card-value mono" id="db-hash">—</span></div>
+                        <div class="data-card"><div class="data-card-header"><span class="data-card-label">{{ _('size_label') }}</span></div><span class="data-card-value" id="db-size">—</span></div>
+
+                        <div class="section-title">{{ _('activity_users_section_title') }}</div>
+                        <div class="data-card">
+                            <div class="data-card-header">
+                                <span class="data-card-label">{{ _('progression_label') }}</span>
+                                <button class="btn-capsule" onclick="resetProgress()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                                    <span>{{ _('reset_label') }}</span>
+                                </button>
+                            </div>
+                            <div id="db-progress-list" class="db-chips-area">—</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="data-card-header">
+                                <span class="data-card-label">{{ _('annotations_label') }}</span>
+                                <button class="btn-capsule" onclick="deleteAnnotations()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    <span>{{ _('purge_label') }}</span>
+                                </button>
+                            </div>
+                            <span class="data-card-value"><span id="db-notes">0</span> {{ _('notes_label') }} • <span id="db-bookmarks">0</span> {{ _('bookmarks_label') }}</span>
+                        </div>
+                        <div id="danger-feedback" class="manage-feedback" style="margin-top:4px;"></div>
+                    </div>
+                </div>
+
+                <div id="tab-files" class="manage-tab-content" style="gap: 12px;">
+                    <div class="section-title" style="margin-top:0;">{{ _('system_files_section_title') }}</div>
+                    <p class="manage-hint">{{ _('non_essential_files_hint') }}</p>
+                    <div id="local-files-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                    <div id="local-files-feedback" class="manage-feedback"></div>
+
+                    <div class="section-title" style="color:#e05c5c;">{{ _('danger_zone_title') }}</div>
+                    <div class="data-card">
+                        <div class="data-card-header">
+                            <span class="data-card-label" style="color:#e05c5c;">{{ _('file_deletion_label') }}</span>
+                            <button class="btn-capsule is-danger" onclick="deleteFile()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <span>{{ _('delete_permanently_btn') }}</span>
+                            </button>
+                        </div>
+                        <span class="data-card-value" style="font-size:0.75rem; font-weight:normal; color:rgba(255,255,255,0.4);">{{ _('irreversible_label') }}</span>
+                    </div>
+                    <div id="delete-feedback" class="manage-feedback"></div>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- NFO Drawer -->
+    <div id="nfo-drawer" class="nfo-drawer">
+        <div class="nfo-header">
+            <h3 class="nfo-title" id="nfo-drawer-title">{{ _('information_title') }}</h3>
+            <button class="nfo-close" onclick="closeNfo()" title="{{ _('close_btn_title') }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="nfo-content">
+            <pre id="nfo-text-container"></pre>
+        </div>
+    </div>
+
+    <!-- Modale de Montage ISO (Agent Local) -->
+    <dialog id="mount-agent-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">{{ _('iso_mount_agent_title') }}</h3>
+                <button class="icon-action" onclick="document.getElementById('mount-agent-modal').close()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="agent-log-area" style="background: #050505; color: #00cf7f; font-family: 'Courier New', monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 200px; overflow-y: auto; border: 1px solid rgba(0, 207, 127, 0.2); margin-bottom: 20px; line-height: 1.4;">
+                    <!-- Logs will be injected here -->
+                </div>
+                
+                <div id="agent-modal-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn-capsule" id="btn-agent-main" style="display: none;">
+                        <!-- Le contenu sera injecté dynamiquement -->
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+{% endblock %}

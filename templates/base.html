@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PC Games Collection{% endblock %}</title>
+
+    <link rel="stylesheet" href="/static/css/base.css?v={{ APP_VERSION }}">
+    <link rel="stylesheet" href="/static/css/style.css?v={{ APP_VERSION }}">
+
+    <script>
+        (function() {
+            const isDev = window.location.hostname.includes('-dev');
+            // Restore exact original MDI paths: spider-thread and gamepad-variant-outline
+            const spiderPath = "M13 2V7.08A5.47 5.47 0 0 0 12 7A5.47 5.47 0 0 0 11 7.08V2M16.9 15A5 5 0 0 1 16.73 15.55L20 17.42V22H18V18.58L15.74 17.29A4.94 4.94 0 0 1 8.26 17.29L6 18.58V22H4V17.42L7.27 15.55A5 5 0 0 1 7.1 15H5.3L2.55 16.83L1.45 15.17L4.7 13H7.1A5 5 0 0 1 7.37 12.12L5.81 11.12L2.24 12L1.76 10L6.19 8.92L8.5 10.45A5 5 0 0 1 15.5 10.45L17.77 8.92L22.24 10L21.76 12L18.19 11.11L16.63 12.11A5 5 0 0 1 16.9 13H19.3L22.55 15.16L21.45 16.82L18.7 15M11 14A1 1 0 1 0 10 15A1 1 0 0 0 11 14M15 14A1 1 0 1 0 14 15A1 1 0 0 0 15 14Z";
+            const gamepadPath = "M6,9H8V11H10V13H8V15H6V13H4V11H6V9M18.5,9A1.5,1.5 0 0,1 20,10.5A1.5,1.5 0 0,1 18.5,12A1.5,1.5 0 0,1 17,10.5A1.5,1.5 0 0,1 18.5,9M15.5,12A1.5,1.5 0 0,1 17,13.5A1.5,1.5 0 0,1 15.5,15A1.5,1.5 0 0,1 14,13.5A1.5,1.5 0 0,1 15.5,12M17,5A7,7 0 0,1 24,12A7,7 0 0,1 17,19C15.04,19 13.27,18.2 12,16.9C10.73,18.2 8.96,19 7,19A7,7 0 0,1 0,12A7,7 0 0,1 7,5H17M7,7A5,5 0 0,0 2,12A5,5 0 0,0 7,17C8.64,17 10.09,16.21 11,15H13C13.91,16.21 15.36,17 17,17A5,5 0 0,0 22,12A5,5 0 0,0 17,7H7Z";
+
+            const color = isDev ? "white" : "#00cf7f";
+            const path = isDev ? spiderPath : gamepadPath;
+
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="${color}" d="${path}"/></svg>`;
+            const iconUrl = 'data:image/svg+xml;base64,' + btoa(svg);
+
+            const link = document.createElement('link');
+            link.rel = 'icon';
+            link.type = 'image/svg+xml';
+            link.href = iconUrl;
+            document.head.appendChild(link);
+        })();
+    </script>
+
+    <script src="/static/js/generic_wizard.js?v={{ APP_VERSION }}" defer></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lozad/dist/lozad.min.js"></script>
+
+    {% block head %}{% endblock %}
+
+    <style>
+        /* Iridescent Progress Bar for Archive tasks */
+        .zip-progress-container {
+            background: #000;
+            border: 1px solid #00cf7f;
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .zip-progress-bar {
+            background: linear-gradient(90deg, #00cf7f, #00ef92);
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+        .toast-percentage {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-left: auto;
+        }
+        .toast-notification.error {
+            border-color: #ff4444 !important;
+        }
+        
+        /* Iridescent pulse for the text during processing */
+        .iridescent-text {
+            background: linear-gradient(
+                90deg, 
+                #00cf7f, 
+                #00a3ff, 
+                #7000ff, 
+                #ff00c7, 
+                #00cf7f
+            );
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: iridescent-move 3s linear infinite;
+            font-weight: 700;
+        }
+        
+        @keyframes iridescent-move {
+            0% { background-position: 0% 0%; }
+            100% { background-position: -200% 0%; }
+        }
+    </style>
+
+    <script>
+        // Initialize i18n
+        window.i18n_translations = {{ get_all_translations() | tojson | safe }};
+        window._ = (key, params = {}) => {
+            let text = window.i18n_translations[key] || key;
+            for (const [k, v] of Object.entries(params)) {
+                text = text.replace(`{${k}}`, v);
+            }
+            return text;
+        };
+
+        /**
+         * ARCHIVE NOTIFICATION SYSTEM
+         * Polls for ready/processing archives and displays toast notifications
+         */
+        window.zipMonitor = {
+            interval: 4000,
+            timer: null,
+            tracking: new Map(), // folder_path -> { element, status }
+            listeners: [], // callbacks for status updates
+
+            start() {
+                if (this.timer) return;
+                this.check();
+                this.timer = setInterval(() => this.check(), this.interval);
+            },
+
+            stop() {
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+            },
+
+            addListener(callback) {
+                this.listeners.push(callback);
+            },
+
+            removeListener(callback) {
+                this.listeners = this.listeners.filter(l => l !== callback);
+            },
+
+            notifyListeners(notif) {
+                this.listeners.forEach(l => {
+                    try { l(notif); } catch(e) { console.error("Listener error:", e); }
+                });
+            },
+
+            async check() {
+                try {
+                    const response = await fetch('/api/user/zip-notifications');
+                    if (response.status === 401) {
+                        this.stop();
+                        return;
+                    }
+                    if (!response.ok) return;
+
+                    const data = await response.json();
+                    if (data.notifications) {
+                        data.notifications.forEach(notif => {
+                            this.updateOrCreate(notif);
+                            this.notifyListeners(notif);
+                        });
+                    }
+                } catch (error) {
+                    // Silently fail
+                }
+            },
+
+            updateOrCreate(notif) {
+                const existing = this.tracking.get(notif.folder_path);
+
+                if (existing) {
+                    // Update existing toast
+                    this.updateToast(existing.element, notif);
+
+                    // Transformation d'état
+                    if (existing.status === 'processing') {
+                        if (notif.zip_status === 'ready') {
+                            existing.status = 'ready';
+                            this.transformToReady(existing.element, notif);
+                        } else if (notif.zip_status === 'error') {
+                            existing.status = 'error';
+                            this.transformToError(existing.element, notif);
+                        }
+                    }
+                } else {
+                    // Create new toast
+                    const toast = this.createToast(notif);
+                    this.tracking.set(notif.folder_path, {
+                        element: toast,
+                        status: notif.zip_status
+                    });
+                }
+            },
+
+            createToast(notif) {
+                let container = document.querySelector('.toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.className = 'toast-container';
+                    document.body.appendChild(container);
+                }
+
+                const toast = document.createElement('div');
+                toast.className = 'toast-notification';
+                toast.dataset.folderPath = notif.folder_path;
+
+                if (notif.zip_status === 'processing') {
+                    toast.innerHTML = `
+                        <div class="toast-header">
+                            <span class="toast-title">Préparation...</span>
+                            <span class="toast-percentage">${notif.zip_progress}%</span>
+                            <button class="toast-close" title="Fermer">&times;</button>
+                        </div>
+                        <div class="toast-body">
+                            Création de l'archive pour <strong>${notif.name}</strong>
+                            <div class="zip-progress-container">
+                                <div class="zip-progress-bar" style="width: ${notif.zip_progress}%"></div>
+                            </div>
+                        </div>
+                    `;
+                } else if (notif.zip_status === 'error') {
+                    this.setErrorContent(toast, notif);
+                } else {
+                    this.setReadyContent(toast, notif);
+                }
+
+                // Add close functionality
+                const closeBtn = toast.querySelector('.toast-close');
+                if (closeBtn) closeBtn.addEventListener('click', () => this.dismiss(notif.folder_path));
+
+                container.appendChild(toast);
+
+                // Only auto-dismiss if ready
+                if (notif.zip_status === 'ready') {
+                    setTimeout(() => this.dismiss(notif.folder_path), 15000);
+                }
+
+                return toast;
+            },
+
+            updateToast(toast, notif) {
+                if (notif.zip_status === 'processing') {
+                    const bar = toast.querySelector('.zip-progress-bar');
+                    const percent = toast.querySelector('.toast-percentage');
+                    if (bar) bar.style.width = notif.zip_progress + '%';
+                    if (percent) percent.textContent = notif.zip_progress + '%';
+                }
+            },
+
+            transformToReady(toast, notif) {
+                toast.classList.add('is-ready');
+                this.setReadyContent(toast, notif);
+                const closeBtn = toast.querySelector('.toast-close');
+                if (closeBtn) closeBtn.addEventListener('click', () => this.dismiss(notif.folder_path));
+                setTimeout(() => this.dismiss(notif.folder_path), 15000);
+            },
+
+            transformToError(toast, notif) {
+                toast.classList.add('error');
+                this.setErrorContent(toast, notif);
+                const closeBtn = toast.querySelector('.toast-close');
+                if (closeBtn) closeBtn.addEventListener('click', () => this.dismiss(notif.folder_path));
+            },
+
+            setErrorContent(toast, notif) {
+                toast.innerHTML = `
+                    <div class="toast-header">
+                        <span class="toast-title" style="display:flex; align-items:center; gap:8px; color:#ff4444;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            Erreur d'archivage
+                        </span>
+                        <button class="toast-close" title="Fermer">&times;</button>
+                    </div>
+                    <div class="toast-body">
+                        Une erreur est survenue pour <strong>${notif.name}</strong>. Vérifiez l'espace disque ou le timeout.
+                    </div>
+                `;
+            },
+
+            setReadyContent(toast, notif) {
+                toast.innerHTML = `
+                    <div class="toast-header">
+                        <span class="toast-title" style="display:flex; align-items:center; gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00cf7f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Archive prête
+                        </span>
+                        <button class="toast-close" title="Fermer">&times;</button>
+                    </div>
+                    <div class="toast-body">
+                        L'archive pour <strong>${notif.name}</strong> est maintenant disponible.
+                    </div>
+                    <div class="toast-footer">
+                        <a href="${notif.zip_path}" class="btn btn-primary toast-download-link" download>
+                            Télécharger l'archive
+                        </a>
+                    </div>
+                `;
+            },
+
+            dismiss(folderPath) {
+                const entry = this.tracking.get(folderPath);
+                if (!entry) return;
+
+                const toast = entry.element;
+                this.tracking.delete(folderPath);
+
+                if (!toast || !toast.parentElement) return;
+                toast.style.animation = 'toast-slide-out 0.4s ease forwards';
+                setTimeout(() => {
+                    if (toast.parentElement) toast.remove();
+
+                    // Remove container if empty
+                    const container = document.querySelector('.toast-container');
+                    if (container && container.children.length === 0) {
+                        container.remove();
+                    }
+                }, 400);
+            }
+        };
+
+        /**
+         * Gère les états d'un bouton capsule (Standardisation v1.6.0)
+         */
+        window.setCapsuleState = function(btn, state, text) {
+            if (!btn) return;
+            if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+
+            btn.classList.remove('is-processing', 'is-success', 'is-danger');
+            btn.disabled = (state === 'processing');
+
+            if (state === 'processing') {
+                btn.classList.add('is-processing');
+                btn.innerHTML = `<span class="capsule-spinner"></span> <span>${text}</span>`;
+            } else if (state === 'success' || state === 'error') {
+                btn.classList.add(state === 'success' ? 'is-success' : 'is-danger');
+                btn.innerHTML = (state === 'success' ?
+                    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` :
+                    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+                ) + ` <span>${text}</span>`;
+
+                setTimeout(() => {
+                    btn.classList.remove('is-success', 'is-danger');
+                    btn.innerHTML = btn.dataset.originalHtml;
+                    btn.disabled = false;
+                }, 3000);
+            } else {
+                btn.innerHTML = btn.dataset.originalHtml;
+            }
+        };
+
+        /**
+         * INFORMATIVE MODAL SYSTEM
+         */
+        window.showAlert = function(message, type = 'info', title = null) {
+            if (!title) {
+                if (type === 'success') title = _('success_label');
+                else if (type === 'error') title = _('error_label');
+                else if (type === 'warning') title = _('warning_title');
+                else title = _('info_title');
+            }
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('global-modal-overlay');
+                const modal = overlay.querySelector('.informative-modal');
+                const titleEl = modal.querySelector('.modal-title');
+                const messageEl = modal.querySelector('.modal-message');
+                const iconContainer = modal.querySelector('.modal-icon');
+                const actions = modal.querySelector('.modal-actions');
+
+                // Reset state
+                modal.className = 'informative-modal modal-type-' + type;
+                titleEl.textContent = title;
+                messageEl.textContent = message;
+
+                // Icon selection
+                const icons = {
+                    info: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+                    success: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+                    warning: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+                    error: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'
+                };
+                iconContainer.innerHTML = icons[type] || icons.info;
+
+                // Actions
+                actions.innerHTML = `<button class="modal-btn modal-btn-primary">${_('close_btn_title')}</button>`;
+                const btn = actions.querySelector('button');
+
+                const close = () => {
+                    overlay.classList.remove('active');
+                    btn.removeEventListener('click', close);
+                    document.removeEventListener('keydown', handleKey);
+                    setTimeout(() => resolve(), 300);
+                };
+
+                const handleKey = (e) => {
+                    if (e.key === 'Enter' || e.key === 'Escape') close();
+                };
+
+                btn.addEventListener('click', close);
+                document.addEventListener('keydown', handleKey);
+
+                overlay.classList.add('active');
+                btn.focus();
+            });
+        };
+
+        window.showConfirm = function(message, title = 'Confirmation') {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('global-modal-overlay');
+                const modal = overlay.querySelector('.informative-modal');
+                const titleEl = modal.querySelector('.modal-title');
+                const messageEl = modal.querySelector('.modal-message');
+                const iconContainer = modal.querySelector('.modal-icon');
+                const actions = modal.querySelector('.modal-actions');
+
+                modal.className = 'informative-modal modal-type-warning';
+                titleEl.textContent = title;
+                messageEl.textContent = message;
+                iconContainer.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+
+                actions.innerHTML = `
+                    <button class="modal-btn modal-btn-secondary" data-value="false">${_('cancel_label')}</button>
+                    <button class="modal-btn modal-btn-primary" data-value="true">${_('validate_label')}</button>
+                `;
+
+                const btns = actions.querySelectorAll('button');
+
+                const close = (result) => {
+                    overlay.classList.remove('active');
+                    document.removeEventListener('keydown', handleKey);
+                    setTimeout(() => resolve(result), 300);
+                };
+
+                const handleKey = (e) => {
+                    if (e.key === 'Enter') close(true);
+                    if (e.key === 'Escape') close(false);
+                };
+
+                btns.forEach(b => {
+                    b.onclick = () => close(b.dataset.value === 'true');
+                });
+
+                document.addEventListener('keydown', handleKey);
+                overlay.classList.add('active');
+                btns[1].focus(); // Focus primary action
+            });
+        };
+
+        window.setLanguage = (lang) => {
+            document.cookie = `lang=${lang}; path=/; max-age=${60*60*24*365}`;
+            location.reload();
+        };
+
+        // Initialize monitoring
+        document.addEventListener('DOMContentLoaded', () => {
+            {% if user %}
+            window.zipMonitor.start();
+            {% endif %}
+        });
+    </script>
+</head>
+<body class="{% if user %}logged-in{% endif %}">
+    {% block content %}{% endblock %}
+
+    <!-- GLOBAL INFORMATIVE MODAL -->
+    <div id="global-modal-overlay" class="modal-overlay">
+        <div class="informative-modal">
+            <div class="modal-icon"></div>
+            <div class="modal-title">Notification</div>
+            <div class="modal-message">Message</div>
+            <div class="modal-actions"></div>
+        </div>
+    </div>
+
+    {% include "components/generic_wizard.html" %}
+
+    <a href="{{ GITHUB_REPO_URL }}/tags" target="_blank" rel="noopener noreferrer" class="app-version-badge">v{{ APP_VERSION }}</a>
+</body>
+</html>

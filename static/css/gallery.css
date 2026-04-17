@@ -1,0 +1,557 @@
+/* --- GAME COLLECTIONS (Ex-Families) --- */
+.collection-link {
+    color: var(--primary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 800;
+}
+
+.collection-link:hover {
+    color: #00cf7f;
+    text-decoration: underline;
+}
+
+.collection-separator {
+    margin: 0 4px;
+    opacity: 0.4;
+    font-weight: 400;
+}
+
+.family-header {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.8), rgba(20, 20, 20, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.family-cover-wrapper {
+    flex-shrink: 0;
+    width: 180px;
+    height: 240px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    background: #111;
+}
+
+.family-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.family-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.family-info h1 {
+    margin: 0 0 12px 0;
+    font-size: 2rem;
+    color: #fff;
+    letter-spacing: -0.5px;
+}
+
+.family-info p {
+    margin: 0;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.6;
+    max-width: 800px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- [/GAME FAMILIES] --- */
+
+/* ============================================================
+   JDR LIBRARY — GALLERY.CSS
+   Styles spécifiques à la page bibliothèque
+   ============================================================ */
+
+/* ── LAYOUT PRINCIPAL (Avec Sidebar Coulissante) ────────── */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Force la hauteur exacte du viewport */
+}
+
+.gallery-layout {
+  display: grid;
+  grid-template-columns: 1fr 0px 0px; 
+  transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
+  min-height: 0;
+  /* overflow: hidden;  <-- Supprimé car il peut gêner le scroll interne sur certains navigateurs */
+}
+
+/* ── BARRE DE RECHERCHE ─────────────────────────────────── */
+.search-wrapper {
+  flex-grow: 1;
+  max-width: 500px;
+  position: relative; /* Indispensable pour le position:absolute du bouton */
+  display: flex;
+  align-items: center;
+}
+.search-icon-btn {
+  position: absolute !important;
+  right: 12px !important; /* On le met bien à droite à l'intérieur */
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 34px; height: 34px;
+  display: flex !important; align-items: center; justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  z-index: 99 !important; /* Très haut pour passer devant l'input */
+  background: none; border: none; padding: 0;
+}
+.search-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--primary);
+}
+.search-icon-btn svg { width: 20px; height: 20px; display: block; }
+
+/* --- [BLOC: CSS_SEARCH_INPUT_CLEAN] --- */
+.search-input,
+.filter-select {
+  width: 100% !important;
+  height: 42px;
+  padding: 0 50px 0 20px !important;
+  margin: 0;
+  display: block;
+}
+/* Pour le select, on s'assure que le texte est centré verticalement si possible */
+select.filter-select {
+    line-height: 40px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+/* --- [/BLOC: CSS_SEARCH_INPUT_CLEAN] --- */
+
+/* ── MODALE FILTRES AVANCÉS ─────────────────────────────── */
+.filter-section {
+    margin-bottom: 24px;
+}
+.filter-section:last-child { margin-bottom: 0; }
+
+.filter-tag-family-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+}
+.filter-tag-family-name {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--accent-gold);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.filter-tag-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.filter-tag-pill {
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-strong);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.filter-tag-pill:hover {
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+.filter-tag-pill.active {
+    background: var(--primary-dim);
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: 0 0 10px var(--primary-glow);
+}
+.filter-tag-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+}
+
+/* ── GRILLE GALERIE ─────────────────────────────────────── */
+.gallery-content {
+  width: 100%;
+  height: 100%; /* Prend toute la hauteur du layout */
+  padding: 36px 20px;
+  overflow-y: auto; /* Ajoute un ascenseur indépendant pour les jeux */
+  overflow-x: hidden;
+  min-height: 0; /* Important pour le scroll dans un grid/flex container */
+  display: block;
+}
+
+/* Personnalisation subtile de la scrollbar de la galerie */
+.gallery-content::-webkit-scrollbar { width: 8px; }
+.gallery-content::-webkit-scrollbar-track { background: transparent; }
+.gallery-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+.gallery-content::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+/* Chaque carte occupe toute la hauteur de sa cellule */
+.game-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform var(--ease), border-color var(--ease), box-shadow var(--ease);
+  
+  /* --- 🚀 OPTIMISATIONS FLUIDITÉ (SANS BUGS) --- */
+  
+  /* Force un calque de rendu sans surcharger will-change */
+  transform: translateZ(0); 
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+.game-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+}
+
+/* Feedback visuel lors du long-press (Admin) */
+.game-card.pressing {
+  transform: scale(0.98);
+  border-color: var(--accent-gold);
+  transition: transform 3s linear, border-color 0.2s ease;
+}
+.game-card.pressing::after {
+  content: "";
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  border: 2px solid var(--accent-gold);
+  border-radius: 22px;
+  mask: conic-gradient(from 0deg, #000 0%, transparent 0%);
+  -webkit-mask: conic-gradient(from 0deg, #000 0%, transparent 0%);
+  animation: longPressProgress 3s linear forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes longPressProgress {
+  from {
+    mask: conic-gradient(from 0deg, #000 0%, transparent 0%);
+    -webkit-mask: conic-gradient(from 0deg, #000 0%, transparent 0%);
+  }
+  to {
+    mask: conic-gradient(from 0deg, #000 100%, transparent 100%);
+    -webkit-mask: conic-gradient(from 0deg, #000 100%, transparent 100%);
+  }
+}
+
+.game-card[hidden] { display: none !important; }
+
+.card-img-wrapper {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: #151515;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative; /* Pour positionner l'overlay des étoiles */
+}
+
+.game-rating-overlay {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.9rem;
+  color: #00cf7f;
+  z-index: 5;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Lozad Lazy Loading Fade-in Optimized */
+.lozad {
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity; /* Force GPU layer */
+}
+.lozad[data-loaded="true"] {
+    opacity: 1;
+}
+
+.card-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.08;
+}
+
+.card-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 60px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: #111;
+  overflow: hidden;
+  line-height: 1.3;
+  border-radius: 0 0 20px 20px;
+}
+
+.star-filled { color: #00cf7f; }
+.star-empty { color: rgba(255, 255, 255, 0.2); }
+
+/* ── ÉTAT VIDE GALERIE ──────────────────────────────────── */
+.gallery-empty {
+  display: none;
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+}
+.gallery-empty svg { opacity: 0.10; margin-bottom: 16px; }
+.gallery-empty p { font-size: 0.9rem; margin: 0; }
+
+/* On affiche la galerie par défaut */
+#gallery-container { transition: opacity 0.15s ease-in; }
+#gallery-container.ready { opacity: 1; }
+
+/* ── LOGO / BRAND SCAN ──────────────────────────────────── */
+button.nav-brand {
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+  text-transform: uppercase; letter-spacing: 2px; transition: opacity var(--ease);
+  display: flex; align-items: center; gap: 12px;
+}
+button.nav-brand em { font-style: normal; color: var(--primary); font-weight: 700; }
+button.nav-brand span { font-size: 0.75rem; line-height: 1; white-space: nowrap; }
+button.nav-brand:hover #d20-icon { animation: spin-d20 1.8s linear infinite; }
+@keyframes spin-d20 { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
+button.nav-brand[data-scanning] span { animation: pulse-text 0.8s ease-in-out infinite alternate; }
+@keyframes pulse-text { from { opacity: 0.6; } to { opacity: 1; } }
+
+/* --- EASTER EGG D20 --- */
+.d20-wrapper { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+#d20-roll-result {
+  position: absolute; font-weight: 900; font-size: 16px; color: #fff;
+  opacity: 0; pointer-events: none; text-shadow: 0 2px 5px rgba(0,0,0,0.9); z-index: 2;
+}
+#d20-roll-result.show-roll { animation: pop-roll 2.5s ease-in-out forwards; }
+@keyframes pop-roll {
+  0%   { transform: scale(0); opacity: 0; }
+  15%  { transform: scale(1.6); opacity: 1; }
+  85%  { transform: scale(1.6); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* ── SIDEBAR FAVORIS (La Nouveauté) ─────────────────────── */
+.resizer {
+  background: #000;
+  cursor: col-resize;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  transition: background 0.2s;
+  z-index: 10;
+}
+.resizer:hover, .resizer.dragging { background: var(--primary); }
+
+.sidebar {
+  background: rgba(15, 15, 15, 0.95);
+  border-left: 1px solid var(--border);
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+  overflow-x: hidden;
+}
+
+.sidebar-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--primary);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.sidebar-content {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar-content::-webkit-scrollbar { width: 6px; }
+.sidebar-content::-webkit-scrollbar-track { background: transparent; }
+.sidebar-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 3px; }
+.sidebar-content::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* ── MODALE DE GESTION (LONG PRESS) ─────────────────────── */
+.mgmt-actions-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px;
+  align-items: stretch;
+}
+.mgmt-btn {
+  width: 100%;
+  justify-content: flex-start !important;
+  padding: 12px 20px !important;
+  height: auto !important;
+  font-size: 0.95rem !important;
+}
+.mgmt-btn svg {
+  margin-right: 12px;
+  opacity: 0.7;
+}
+.mgmt-divider {
+  height: 1px;
+  background: var(--border-strong);
+  margin: 8px 0;
+}
+
+/* Message si vide */
+.empty-filters {
+  text-align: center;
+  padding: 40px 20px;
+  color: #555;
+  font-size: 0.85rem;
+  font-style: italic;
+}/* --- [BLOC: HEADER_ACTIONS_REFACTOR] --- */
+.lang-selector-header {
+    display: flex;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    padding: 2px;
+    gap: 2px;
+}
+
+.lang-selector-header button {
+    all: unset;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    border: 1px solid transparent; /* Bordure invisible pour stabiliser les dimensions */
+}
+
+.lang-selector-header button:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.lang-selector-header button.active {
+    background: #00cf7f;
+    color: #fff;
+    font-weight: 600;
+    border-color: #00cf7f; /* On colore la bordure déjà existante */
+    animation: dim-active 2s ease-out 1s forwards;
+}
+
+/* Version Panneau Latéral (Plus compacte) */
+#filter-mode-selector {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+#filter-mode-selector button {
+    padding: 2px 8px;
+    font-size: 0.65rem;
+}
+
+@keyframes dim-active {
+    from { 
+        background-color: #00cf7f; 
+        border-color: #00cf7f;
+        box-shadow: 0 0 15px rgba(0, 207, 127, 0.4); 
+    }
+    to { 
+        background-color: rgba(0, 207, 127, 0.25); 
+        border-color: rgba(0, 207, 127, 0.3);
+        box-shadow: 0 0 0px transparent;
+    }
+}
+
+.admin-text-link {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: none;
+    opacity: 0.6;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    display: inline-block;
+}
+
+.admin-text-link:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+/* --- [/BLOC: HEADER_ACTIONS_REFACTOR] --- */
