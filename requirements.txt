@@ -1,0 +1,34 @@
+# Core Web Framework
+fastapi
+uvicorn
+jinja2
+python-multipart
+aiofiles
+requests
+python-dotenv
+watchfiles
+ddgs
+
+# Google
+google-cloud-discoveryengine
+
+# Database & Migrations
+sqlalchemy
+alembic
+
+# Security & Auth
+passlib
+bcrypt
+python-jose
+argon2-cffi
+authlib
+httpx
+itsdangerous
+cryptography
+
+# PDF Processing
+
+pycdlib
+
+Pillow
+pillow-avif-plugin

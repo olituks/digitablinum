@@ -1,0 +1,145 @@
+/* --- GENERIC WIZARD / MODAL STYLES --- */
+
+.wizard-progress {
+    padding: 20px 24px 10px;
+}
+
+.wizard-progress-track {
+    height: 0;
+    background: transparent;
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.wizard-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--primary);
+    border-radius: 2px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.wizard-steps-indicators {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    padding: 0 10px;
+}
+
+/* Connecteur horizontal entre les étapes */
+.wizard-steps-indicators::before {
+    content: "";
+    position: absolute;
+    top: 12px; /* Aligné sur le centre des points */
+    left: 40px;
+    right: 40px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    z-index: 0;
+}
+
+.wizard-step-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    position: relative;
+    z-index: 1;
+}
+
+.wizard-step-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--surface-raised);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--text-muted);
+}
+
+.wizard-step-indicator.active .wizard-step-dot {
+    background: var(--bg);
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-dim);
+    transform: scale(1.1);
+}
+
+.wizard-step-indicator.completed .wizard-step-dot {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.wizard-step-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: color 0.3s ease;
+}
+
+.wizard-step-indicator.active .wizard-step-label {
+    color: var(--text-primary);
+}
+
+.wizard-step-indicator.completed .wizard-step-label {
+    color: var(--primary);
+}
+
+/* Modal content transitions */
+.gw-step-content {
+    animation: gwFadeIn 0.3s ease-out;
+}
+
+/* Hide internal save buttons when inside the generic wizard in wizard mode */
+#generic-wizard-modal .modal-footer button.btn-capsule, 
+#generic-wizard-modal .gw-step-content button.btn-capsule:not(.cover-search-btn):not(.icon-action) {
+    /* We only want to keep the wizard's own footer buttons and search/IA trigger buttons if needed,
+       but usually we want to hide the 'Sauvegarder' blocks. */
+}
+
+/* More specific rule to hide the save blocks from the reused tabs */
+#generic-wizard-modal .gw-step-content div[style*="justify-content:flex-end"] {
+    display: none !important;
+}
+
+/* UX Refinement: Resize illustrations to fit fixed canvas in wizard mode */
+#generic-wizard-modal .cover-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+    gap: 20px !important;
+    max-height: 520px;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+#generic-wizard-modal .cover-option {
+    aspect-ratio: 2 / 3;
+    background: var(--surface-raised);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    border: 2px solid rgba(255,255,255,0.05);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+#generic-wizard-modal .cover-option:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary);
+}
+
+#generic-wizard-modal .cover-option img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
