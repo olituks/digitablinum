@@ -1,0 +1,225 @@
+<dialog id="direct-edit-modal">
+    <div class="modal modal--wide" style="display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <h3 class="modal-title" id="direct-edit-title">{{ game.title }}</h3>
+            <button class="icon-action" onclick="document.getElementById('direct-edit-modal').close()" title="{{ _('close_btn_title') }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="manage-tab-group">
+            <div class="manage-tab-container">
+                <button class="manage-tab-btn active" data-tab="direct-meta" onclick="switchDirectTab('meta', this)">{{ _('metadata_tab') }}</button>
+                <button class="manage-tab-btn" data-tab="direct-cover" onclick="switchDirectTab('cover', this)">{{ _('cover_tab') }}</button>
+                <button class="manage-tab-btn" data-tab="direct-desc" onclick="switchDirectTab('desc', this)">{{ _('synopsis_tab') }}</button>
+                <button class="manage-tab-btn" data-tab="direct-links" onclick="switchDirectTab('links', this)">{{ _('links_tab') }}</button>
+                <button class="manage-tab-btn" data-tab="direct-tags" onclick="switchDirectTab('tags', this)">{{ _('tags_tab') }}</button>
+            </div>
+        </div>
+
+        <div class="manage-body" style="padding: 20px; overflow-y: auto; flex-grow: 1;">
+            <!-- Onglet Métadonnées -->
+            <div id="direct-tab-meta" class="manage-tab-content active">
+                <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 12px;">
+                    <div class="manage-header-line">
+                        <span class="section-title">{{ _('general_info_section') }}</span>
+                        <div class="manage-ia-controls">
+                            <div id="direct-gm-feedback" class="manage-feedback"></div>
+                            <button class="btn-capsule" onclick="GameEditDirectModal.runMetaAI(this)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                                <span>{{ _('generate_with_ai_btn') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="direct-gm-edition-selector" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;"></div>
+                    <div class="manage-grid-2">
+                        <div>
+                            <label for="direct-gm-title-fr" class="data-card-label">{{ _('title_fr_label') }}</label>
+                            <input type="text" id="direct-gm-title-fr">
+                        </div>
+                        <div>
+                            <label for="direct-gm-title-en" class="data-card-label">{{ _('title_en_label') }}</label>
+                            <input type="text" id="direct-gm-title-en">
+                        </div>
+                    </div>
+                    <div class="manage-grid-2">
+                        <div>
+                            <label for="direct-gm-developer" class="data-card-label">{{ _('developer_label') }}</label>
+                            <input type="text" id="direct-gm-developer">
+                        </div>
+                        <div>
+                            <label for="direct-gm-publisher" class="data-card-label">{{ _('publisher_label') }}</label>
+                            <input type="text" id="direct-gm-publisher">
+                        </div>
+                    </div>
+                    <div class="manage-grid-2">
+                        <div>
+                            <label for="direct-gm-genre" class="data-card-label">{{ _('genre_label') }}</label>
+                            <input type="text" id="direct-gm-genre">
+                        </div>
+                        <div>
+                            <label for="direct-gm-release-date" class="data-card-label">{{ _('release_date_label') }}</label>
+                            <input type="text" id="direct-gm-release-date">
+                        </div>
+                    </div>
+                    <div class="manage-grid-2">
+                        <div>
+                            <label for="direct-gm-platform" class="data-card-label">{{ _('platform_label') }}</label>
+                            <input type="text" id="direct-gm-platform">
+                        </div>
+                        <div>
+                            <label for="direct-gm-universe" class="data-card-label">{{ _('universe_label') }}</label>
+                            <input type="text" id="direct-gm-universe">
+                        </div>
+                    </div>
+                    <div class="manage-grid-2">
+                        <div>
+                            <label for="direct-gm-studio" class="data-card-label">{{ _('studio_label') }}</label>
+                            <input type="text" id="direct-gm-studio">
+                        </div>
+                        <div>
+                            <label for="direct-gm-rating" class="data-card-label">{{ _('rating_100_label') }}</label>
+                            <input type="number" id="direct-gm-rating" step="0.1">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="direct-gm-keywords" class="data-card-label">{{ _('keywords_label') }}</label>
+                        <input type="text" id="direct-gm-keywords">
+                    </div>
+                    <div>
+                        <label for="direct-gm-youtube-urls" class="data-card-label">{{ _('trailers_yt_label') }}</label>
+                        <textarea id="direct-gm-youtube-urls" style="height:80px; resize:vertical;"></textarea>
+                    </div>
+                </div>
+                
+                <div class="manage-footer-actions">
+                    <button type="button" class="btn-capsule" onclick="GameEditDirectModal.saveSection('meta', this)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <span>{{ _('save_btn') }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Onglet Illustration -->
+            <div id="direct-tab-cover" class="manage-tab-content">
+                <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div class="manage-header-line">
+                        <span class="modal-section-label">{{ _('web_search_section') }}</span>
+                        <span class="save-status" id="direct-cover-save-status">✓ {{ _('image_updated_status') }}</span>
+                    </div>
+                    <div class="cover-search-bar">
+                        <input type="text" id="direct-cover-search-input" placeholder="{{ _('keywords_placeholder') }}" aria-label="Recherche web de couverture">
+                        <button class="cover-search-btn" onclick="GameEditDirectModal.launchWebSearch()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
+                                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="direct-web-results" class="cover-grid" style="flex-grow: 1;"></div>
+                </div>
+
+                <div class="manage-footer-actions">
+                    <button type="button" class="btn-capsule" onclick="GameEditDirectModal.saveSection('cover', this)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <span>{{ _('save_btn') }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Onglet Synopsis -->
+            <div id="direct-tab-desc" class="manage-tab-content">
+                <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <label for="direct-ai-prompt">{{ _('ai_prompt_label') }}</label>
+                    <input type="text" id="direct-ai-prompt" style="margin-bottom:14px;">
+
+                    <div class="synopsis-modal-model-row" style="justify-content: flex-end;">
+                        <button type="button" class="btn-capsule" onclick="GameEditDirectModal.generateDescription(this)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                            </svg>
+                            <span>{{ _('generate_with_ai_btn') }}</span>
+                        </button>
+                    </div>
+
+                    <label for="direct-desc-textarea">{{ _('result_editable_label') }} <span style="font-weight:400; color:var(--text-muted);">{{ _('editable_hint') }}</span></label>
+                    <textarea id="direct-desc-textarea" style="flex-grow: 1; min-height: 280px; resize:vertical;"></textarea>
+                </div>
+                
+                <div class="manage-footer-actions">
+                    <button type="button" class="btn-capsule" onclick="GameEditDirectModal.saveSection('desc', this)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <span>{{ _('save_btn') }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Onglet Liens -->
+            <div id="direct-tab-links" class="manage-tab-content">
+                <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 12px; padding-bottom: 6px;">
+                        <span class="section-title" style="border:none; margin:0; padding:0;">{{ _('reference_links_section') }}</span>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div id="direct-gl-feedback" class="manage-feedback" style="margin:0; display: none;"></div>
+                            <button class="btn-capsule" onclick="GameEditDirectModal.generateGameLinks(this)" title="{{ _('search_links_ia_title') }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                                <span>{{ _('generate_with_ai_btn') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="direct-links-editor-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                        <!-- Les inputs de liens seront injectés ici -->
+                    </div>
+                    <button type="button" class="btn-capsule" onclick="GameEditDirectModal.addLinkRow()" style="width:100%;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span>{{ _('add_link_btn') }}</span>
+                    </button>
+                </div>
+
+                <div class="manage-footer-actions">
+                    <button type="button" class="btn-capsule" onclick="GameEditDirectModal.saveSection('links', this)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <span>{{ _('save_btn') }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Onglet TAGS -->
+            <div id="direct-tab-tags" class="manage-tab-content">
+                <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div style="margin-bottom: 24px; padding: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-md);">
+                        <span class="data-card-label" style="display: block; margin-bottom: 12px; color: var(--accent-gold); text-transform: uppercase; letter-spacing: 1px; font-size: 0.7rem;">Collection (Badge Galerie)</span>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <input type="text" id="direct-collection-input" placeholder="ex: Resident Evil" style="flex-grow: 1;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 200px;">
+                                Ce tag sera le seul affiché sur la vignette de la galerie.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 12px; padding-bottom: 6px;">
+                        <span class="section-title" style="border:none; margin:0; padding:0;">Classification par TAGS</span>
+                        <button class="btn-capsule" onclick="GameEditDirectModal.addTagRow()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <span>Ajouter un Tag</span>
+                        </button>
+                    </div>
+                    
+                    <div id="direct-tags-container" style="display:flex; flex-direction:column; gap:16px; margin-bottom:20px;">
+                        <!-- Les familles et tags seront injectés ici -->
+                    </div>
+                </div>
+
+                <div class="manage-footer-actions">
+                    <button type="button" class="btn-capsule" onclick="GameEditDirectModal.saveSection('tags', this)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <span>{{ _('save_btn') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</dialog>
