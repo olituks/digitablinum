@@ -1,0 +1,242 @@
+/* --- [BLOC: CSS_LOGIN_BACKGROUND_FIX] --- */
+/* ============================================================
+   JDR LIBRARY — LOGIN.CSS
+   Styles pour la page de connexion et changement de mot de passe
+   ============================================================ */
+
+/* On force la transparence pour laisser passer notre image */
+html, body {
+  background-color: transparent !important;
+  margin: 0; padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── FOND IMMERSIF ──────────────────────────────────────── */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  
+  /* ⚠️ MODIFIE CE CHEMIN SI TU AS DÉPLACÉ L'IMAGE DANS /static/ */
+  background-image: url('/library/background.jpg'); 
+  
+  background-color: var(--bg); /* Fallback propre si 404 */
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px) brightness(0.35);
+  transform: scale(1.1);
+  z-index: -1;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+}
+
+/* On centre la carte verticalement dans le reste de l'espace */
+.login-card, .change-card {
+  margin: auto 0;
+}
+
+/* ── CARTE DE CONNEXION ─────────────────────────────────── */
+.login-card {
+  position: relative;
+  z-index: 10; /* Assure que la carte passe au-dessus du fond */
+  background: rgba(14, 14, 14, 0.60);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 28px;
+  padding: 3rem 3.5rem;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+  text-align: center;
+}
+/* --- [/BLOC: CSS_LOGIN_BACKGROUND_FIX] --- */
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+.login-logo svg { color: var(--primary); }
+.login-logo-text {
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin: 0 0 2rem;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  letter-spacing: -0.3px;
+}
+.slogan-accent {
+  color: #00cf7f;
+  text-transform: uppercase;
+  font-size: 1.4rem;
+  letter-spacing: 4px;
+  display: inline-block;
+  animation: slogan-pulse 2s infinite ease-in-out;
+  font-weight: 900;
+}
+
+@keyframes slogan-pulse {
+  0% {
+    transform: scale(1);
+    text-shadow: 0 0 10px rgba(0, 207, 127, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    text-shadow: 0 0 25px rgba(0, 207, 127, 0.8), 0 0 40px rgba(0, 207, 127, 0.4);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 10px rgba(0, 207, 127, 0.5);
+  }
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* --- [BLOC: CSS_LOGIN_CLEAN] --- */
+.login-form input {
+  height: 50px;
+  padding: 0 18px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.95rem;
+}
+.login-form input:focus {
+  border-color: var(--primary);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.login-btn {
+  height: 50px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 20px rgba(16, 149, 193, 0.25);
+  margin-top: 4px;
+  width: 100%;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.login-divider:not(:empty)::before {
+  margin-right: 1rem;
+}
+
+.login-divider:not(:empty)::after {
+  margin-left: 1rem;
+}
+
+.oidc-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  text-decoration: none;
+  height: 50px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.oidc-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.oidc_btn svg {
+  color: var(--primary);
+}
+
+/* ── INITIALIZATION ALERT ─────────────────────────────── */
+.initialization-alert {
+  background: rgba(16, 149, 193, 0.1);
+  border: 1px solid rgba(16, 149, 193, 0.3);
+  color: #1095c1;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.spin {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── CHANGE PASSWORD — CARTE NEUTRE ─────────────────────── */
+
+.change-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+.change-card h1 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+.change-card h2 {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin: 0 0 28px;
+}
+.change-card input {
+  height: 46px;
+  padding: 0 16px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+/* --- [/BLOC: CSS_LOGIN_CLEAN] --- */

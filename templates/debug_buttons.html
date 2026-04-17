@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('debug_title') }} — Capsule Standardization{% endblock %}
+
+{% block content %}
+<div style="padding: 40px; max-width: 800px; margin: auto;">
+    <h1 class="t-page" style="margin-bottom: 30px;">Capsule Button Playground</h1>
+    
+    <section class="card" style="display: flex; flex-direction: column; gap: 24px;">
+        <div>
+            <h2 class="t-section" style="margin-bottom: 12px;">Standard States</h2>
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <button class="btn-capsule" onclick="setCapsuleState(this, 'processing', '{{ _('loading_label') }}...')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                    <span>Test Processing</span>
+                </button>
+
+                <button class="btn-capsule" onclick="setCapsuleState(this, 'success', '{{ _('rating_saved') }} !')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Test Success</span>
+                </button>
+
+                <button class="btn-capsule" onclick="setCapsuleState(this, 'error', '{{ _('errors_detected_label') }}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span>Test Error</span>
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="t-section" style="margin-bottom: 12px;">Adaptive (Compact)</h2>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button class="btn-capsule is-compact" title="Compact Button" onclick="setCapsuleState(this, 'success', 'Fait !')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span>Edit Metadata</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <div style="margin-top: 20px;">
+        <a href="/" class="btn btn-secondary">{{ _('back_to_gallery') }}</a>
+    </div>
+</div>
+{% endblock %}
